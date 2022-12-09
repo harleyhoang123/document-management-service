@@ -1,4 +1,4 @@
-package vn.edu.fpt.document.config.security.auditor;
+package vn.edu.fpt.document.factory.config.security.auditor;
 
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
@@ -24,5 +24,6 @@ public class SecurityAuditorAware implements AuditorAware<String> {
                 .map(Authentication::getPrincipal)
                 .map(User.class::cast)
                 .map(User::getUsername);
+
     }
 }

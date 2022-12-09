@@ -1,11 +1,11 @@
-package vn.edu.fpt.document.config.database;
+package vn.edu.fpt.document.factory.config.database;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.auditing.DateTimeProvider;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
-import vn.edu.fpt.document.config.security.auditor.SecurityAuditorAware;
+import vn.edu.fpt.document.factory.config.security.auditor.SecurityAuditorAware;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
