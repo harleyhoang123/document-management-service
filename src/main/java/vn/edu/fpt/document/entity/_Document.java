@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
 import vn.edu.fpt.document.entity.common.Auditor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -33,8 +34,10 @@ public class _Document extends Auditor {
     private String documentId;
     @Field(name = "pages")
     @Builder.Default
-    private List<_Page> pages;
+    @DBRef(lazy = true)
+    private List<_Page> pages = new ArrayList<>();
     @Field(name = "members")
     @Builder.Default
-    private List<MemberInfo> members;
+    @DBRef(lazy = true)
+    private List<MemberInfo> members = new ArrayList<>();
 }

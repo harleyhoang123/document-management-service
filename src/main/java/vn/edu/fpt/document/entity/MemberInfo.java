@@ -8,6 +8,9 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
 import vn.edu.fpt.document.entity.common.Auditor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author : Hoang Lam
  * @product : Charity Management System
@@ -32,4 +35,7 @@ public class MemberInfo extends Auditor {
     private String accountId;
     @Field(name = "role")
     private String role;
+    @Field(name = "visited")
+    @Builder.Default
+    private List<Visited> visited = new ArrayList<>();
 }

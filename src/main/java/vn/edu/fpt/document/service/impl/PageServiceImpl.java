@@ -2,7 +2,13 @@ package vn.edu.fpt.document.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
+import vn.edu.fpt.document.constant.ActivityTypeEnum;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.dto.common.ActivityResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
@@ -10,17 +16,17 @@ import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageResponse;
-import vn.edu.fpt.document.entity.Activity;
-import vn.edu.fpt.document.entity._Document;
-import vn.edu.fpt.document.entity._Page;
+import vn.edu.fpt.document.entity.*;
 import vn.edu.fpt.document.exception.BusinessException;
-import vn.edu.fpt.document.repository.DocumentRepository;
-import vn.edu.fpt.document.repository.PageRepository;
+import vn.edu.fpt.document.repository.*;
 import vn.edu.fpt.document.service.PageService;
 import vn.edu.fpt.document.service.UserInfoService;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,18 +36,38 @@ public class PageServiceImpl implements PageService {
     private final DocumentRepository documentRepository;
     private final PageRepository pageRepository;
     private final UserInfoService userInfoService;
+    private final ContentRepository contentRepository;
+    private final MemberInfoRepository memberInfoRepository;
+    private final ActivityRepository activityRepository;
 
     @Override
     public CreatePageResponse createPageInDocument(String documentId, CreatePageRequest request) {
+        if (!ObjectId.isValid(documentId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document ID invalid");
+        }
         _Document document = documentRepository.findById(documentId)
-                .orElseThrow(()->new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document ID not exist"));
         List<_Page> pages = document.getPages();
-        if (pages.stream().anyMatch(m->m.getTitle().equals(request.getTitle()))){
+        if (pages.stream().anyMatch(m -> m.getTitle().equals(request.getTitle()))) {
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page title already exist");
         }
+        _Content content = _Content.builder()
+                .content(request.getContent())
+                .version(1)
+                .build();
+        try {
+            content = contentRepository.save(content);
+            log.info("Create content success");
+        } catch (Exception ex) {
+            throw new BusinessException("Can't create content in database: " + ex.getMessage());
+        }
+        List<_Content> contents = new ArrayList<>();
+        contents.add(content);
         _Page page = _Page.builder()
                 .title(request.getTitle())
-                .content(request.getContent())
+                .contents(contents)
+                .currentVersion(1)
+                .highestVersion(1)
                 .build();
         try {
             page = pageRepository.save(page);
@@ -51,12 +77,31 @@ public class PageServiceImpl implements PageService {
         }
         pages.add(page);
         document.setPages(pages);
+
+        MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
+                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+        Activity activity = Activity.builder()
+                .changeBy(memberInfo)
+                .type(ActivityTypeEnum.HISTORY)
+                .changedData("created the document")
+                .build();
+        try {
+            activity = activityRepository.save(activity);
+            log.info("Create activity success");
+        } catch (Exception ex) {
+            throw new BusinessException("Can't save activity in database: " + ex.getMessage());
+        }
+        List<Activity> activities = page.getActivities();
+        activities.add(activity);
+        page.setActivities(activities);
+
         try {
             documentRepository.save(document);
             log.info("Add page to list in document success");
         } catch (Exception ex) {
             throw new BusinessException("Can't add page to list in document in database: " + ex.getMessage());
         }
+
         return CreatePageResponse.builder()
                 .pageId(page.getPageId())
                 .build();
@@ -64,15 +109,32 @@ public class PageServiceImpl implements PageService {
 
     @Override
     public CreatePageResponse createPageInPage(String pageId, CreatePageRequest request) {
+        if (!ObjectId.isValid(pageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID invalid");
+        }
         _Page page = pageRepository.findById(pageId)
-                .orElseThrow(()->new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
         List<_Page> pages = page.getPages();
-        if (pages.stream().anyMatch(m->m.getTitle().equals(request.getTitle()))) {
+        if (pages.stream().anyMatch(m -> m.getTitle().equals(request.getTitle()))) {
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child page name already exist in parent page");
         }
+        _Content content = _Content.builder()
+                .content(request.getContent())
+                .version(1)
+                .build();
+        try {
+            content = contentRepository.save(content);
+            log.info("Create content success");
+        } catch (Exception ex) {
+            throw new BusinessException("Can't create content in database: " + ex.getMessage());
+        }
+        List<_Content> contents = new ArrayList<>();
+        contents.add(content);
         _Page childPage = _Page.builder()
                 .title(request.getTitle())
-                .content(request.getContent())
+                .contents(contents)
+                .currentVersion(1)
+                .highestVersion(1)
                 .build();
         try {
             page = pageRepository.save(childPage);
@@ -82,12 +144,30 @@ public class PageServiceImpl implements PageService {
         }
         pages.add(childPage);
         page.setPages(pages);
+
+        MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
+                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+        Activity activity = Activity.builder()
+                .changeBy(memberInfo)
+                .type(ActivityTypeEnum.HISTORY)
+                .changedData("created the document")
+                .build();
+        try {
+            activity = activityRepository.save(activity);
+            log.info("Create activity success");
+        } catch (Exception ex) {
+            throw new BusinessException("Can't save activity in database: " + ex.getMessage());
+        }
+        List<Activity> activities = page.getActivities();
+        activities.add(activity);
+        page.setActivities(activities);
         try {
             pageRepository.save(page);
             log.info("Add child page to list in page success");
         } catch (Exception ex) {
             throw new BusinessException("Can't add child page to list in page in database: " + ex.getMessage());
         }
+
         return CreatePageResponse.builder()
                 .pageId(childPage.getPageId())
                 .build();
@@ -95,19 +175,45 @@ public class PageServiceImpl implements PageService {
 
     @Override
     public void updatePageInDocument(String documentId, String pageId, UpdatePageRequest request) {
+        if (!ObjectId.isValid(documentId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document ID invalid");
+        }
+        if (!ObjectId.isValid(pageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID invalid");
+        }
         _Document document = documentRepository.findById(documentId)
-                .orElseThrow(()->new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
         List<_Page> pages = document.getPages();
         _Page page = pageRepository.findById(pageId)
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
         if (Objects.nonNull(request.getTitle())) {
-            if (pages.stream().anyMatch(m->m.getTitle().equals(request.getTitle()))) {
+            if (pages.stream().anyMatch(m -> m.getTitle().equals(request.getTitle()))) {
                 throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page name already exist in document");
             }
             page.setTitle(request.getTitle());
         }
         if (Objects.nonNull(request.getContent())) {
-            page.setContent(request.getContent());
+            List<_Content> contents = page.getContents();
+            _Content content = contents.stream().filter(m -> m.getContent().equals(request.getContent())).findFirst().get();
+            if (content == null) {
+                page.setCurrentVersion(content.getVersion());
+            } else {
+                Integer highestVersion = page.getHighestVersion();
+                _Content newContent = _Content.builder()
+                        .content(request.getContent())
+                        .version(++highestVersion)
+                        .build();
+                try {
+                    newContent = contentRepository.save(newContent);
+                    log.info("Create content success");
+                } catch (Exception ex) {
+                    throw new BusinessException("Can't create content in database: " + ex.getMessage());
+                }
+                contents.add(newContent);
+                page.setContents(contents);
+                page.setHighestVersion(highestVersion);
+            }
+
         }
         try {
             pageRepository.save(page);
@@ -115,40 +221,106 @@ public class PageServiceImpl implements PageService {
         } catch (Exception ex) {
             throw new BusinessException("Can't update page in database: " + ex.getMessage());
         }
+        MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
+                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+        List<MemberInfo> memberInfos = document.getMembers();
+        if (memberInfos.stream().noneMatch(m->m.getMemberId().equals(request.getMemberId()))) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist in document");
+        }
+        Activity activity = Activity.builder()
+                .changeBy(memberInfo)
+                .type(ActivityTypeEnum.HISTORY)
+                .changedData("created the Issue")
+                .build();
+
+        try {
+            activity = activityRepository.save(activity);
+            log.info("Create activity success");
+        } catch (Exception ex) {
+            throw new BusinessException("Can't save activity in database: " + ex.getMessage());
+        }
     }
 
     @Override
-    public void updatePageInPage(String parentPageId, String childPageId, UpdatePageRequest request) {
+    public void updatePageInPage(String parentPageId, String pageId, UpdatePageRequest request) {
+        if (!ObjectId.isValid(parentPageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "ParentPageId ID invalid");
+        }
+        if (!ObjectId.isValid(pageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID invalid");
+        }
         _Page parentPage = pageRepository.findById(parentPageId)
-                .orElseThrow(()->new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
         List<_Page> childPages = parentPage.getPages();
-        _Page childPage = pageRepository.findById(childPageId)
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child Page ID not exist"));
+        _Page page = pageRepository.findById(pageId)
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child Page ID not exist"));
         if (Objects.nonNull(request.getTitle())) {
-            if (childPages.stream().anyMatch(m->m.getTitle().equals(request.getTitle()))) {
+            if (childPages.stream().anyMatch(m -> m.getTitle().equals(request.getTitle()))) {
                 throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child page name already exist in document");
             }
-            childPage.setTitle(request.getTitle());
+            page.setTitle(request.getTitle());
         }
         if (Objects.nonNull(request.getContent())) {
-            childPage.setContent(request.getContent());
+            List<_Content> contents = page.getContents();
+            _Content content = contents.stream().filter(m -> m.getContent().equals(request.getContent())).findFirst().get();
+            if (content == null) {
+                page.setCurrentVersion(content.getVersion());
+            } else {
+                Integer highestVersion = page.getHighestVersion();
+                _Content newContent = _Content.builder()
+                        .content(request.getContent())
+                        .version(++highestVersion)
+                        .build();
+                try {
+                    newContent = contentRepository.save(newContent);
+                    log.info("Create content success");
+                } catch (Exception ex) {
+                    throw new BusinessException("Can't create content in database: " + ex.getMessage());
+                }
+                contents.add(newContent);
+                page.setContents(contents);
+                page.setHighestVersion(highestVersion);
+            }
         }
+
+        MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
+                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+        Activity activity = Activity.builder()
+                .changeBy(memberInfo)
+                .type(ActivityTypeEnum.HISTORY)
+                .changedData("update the page")
+                .build();
+
         try {
-            pageRepository.save(childPage);
+            activity = activityRepository.save(activity);
+            log.info("Create activity success");
+        } catch (Exception ex) {
+            throw new BusinessException("Can't save activity in database: " + ex.getMessage());
+        }
+        List<Activity> activities = page.getActivities();
+        activities.add(activity);
+        page.setActivities(activities);
+
+        try {
+            pageRepository.save(page);
             log.info("Update page success");
         } catch (Exception ex) {
             throw new BusinessException("Can't update page in database: " + ex.getMessage());
         }
+
     }
 
     @Override
     public void deletePageInDocument(String documentId, String pageId) {
+        if (!ObjectId.isValid(documentId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document ID invalid");
+        }
         _Document document = documentRepository.findById(documentId)
-                .orElseThrow(()->new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
         List<_Page> pages = document.getPages();
         _Page page = pageRepository.findById(pageId)
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
-        if (pages.stream().noneMatch(m->m.getPageId().equals(pageId))) {
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        if (pages.stream().noneMatch(m -> m.getPageId().equals(pageId))) {
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist in Document");
         }
         try {
@@ -157,7 +329,7 @@ public class PageServiceImpl implements PageService {
         } catch (Exception ex) {
             throw new BusinessException("Can't delete page in database: " + ex.getMessage());
         }
-        pages.removeIf(m->m.getPageId().equals(pageId));
+        pages.removeIf(m -> m.getPageId().equals(pageId));
         document.setPages(pages);
         try {
             documentRepository.save(document);
@@ -166,29 +338,35 @@ public class PageServiceImpl implements PageService {
             throw new BusinessException("Can't remove page from list in document in database: " + ex.getMessage());
         }
         if (page.getPages().stream().count() > 0) {
-            for (_Page p : page.getPages() ) {
+            for (_Page p : page.getPages()) {
                 deletePageInPage(pageId, p.getPageId());
             }
         }
     }
 
     @Override
-    public void deletePageInPage(String parentPageId, String childPageId) {
+    public void deletePageInPage(String parentPageId, String pageId) {
+        if (!ObjectId.isValid(parentPageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "ParentPageId invalid");
+        }
+        if (!ObjectId.isValid(pageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "PageId invalid");
+        }
         _Page parentPage = pageRepository.findById(parentPageId)
-                .orElseThrow(()->new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
         List<_Page> childPages = parentPage.getPages();
-        _Page childPage = pageRepository.findById(childPageId)
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child Page ID not exist"));
-        if (childPages.stream().noneMatch(m->m.getPageId().equals(childPageId))) {
+        _Page childPage = pageRepository.findById(pageId)
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child Page ID not exist"));
+        if (childPages.stream().noneMatch(m -> m.getPageId().equals(pageId))) {
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child page ID not exist in parent page");
         }
         try {
-            pageRepository.deleteById(childPageId);
+            pageRepository.deleteById(pageId);
             log.info("Delete child page success");
         } catch (Exception ex) {
             throw new BusinessException("Can't delete child page in database: " + ex.getMessage());
         }
-        childPages.removeIf(m->m.getPageId().equals(childPageId));
+        childPages.removeIf(m -> m.getPageId().equals(pageId));
         parentPage.setPages(childPages);
         try {
             pageRepository.save(parentPage);
@@ -197,23 +375,39 @@ public class PageServiceImpl implements PageService {
             throw new BusinessException("Can't remove page from list in parent page in database: " + ex.getMessage());
         }
         if (childPage.getPages().stream().count() > 0) {
-            for (_Page p : childPage.getPages() ) {
-                deletePageInPage(childPageId, p.getPageId());
+            for (_Page p : childPage.getPages()) {
+                deletePageInPage(pageId, p.getPageId());
             }
         }
     }
 
     @Override
-    public GetPageDetailResponse getPageDetail(String pageId) {
+    public GetPageDetailResponse getPageDetail(String pageId, String memberId) {
+        if (!ObjectId.isValid(pageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "PageId invalid");
+        }
         _Page page = pageRepository.findById(pageId)
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        List<_Content> contents = page.getContents();
+        _Content currentContent = contents.stream().filter(m -> m.getVersion().equals(page.getCurrentVersion())).findFirst().get();
         GetPageDetailResponse getPageDetailResponse = GetPageDetailResponse.builder()
                 .pageId(pageId)
                 .title(page.getTitle())
-                .content(page.getContent())
-                .pages(page.getPages().stream().map(this::convertPageToGetPageResponse).collect(Collectors.toList()))
+                .content(currentContent.getContent())
+                .subPages(page.getPages().stream().map(this::convertPageToGetPageResponse).collect(Collectors.toList()))
                 .activities(page.getActivities().stream().map(this::convertActivityToActivityResponse).collect(Collectors.toList()))
+                .createdBy(page.getCreatedBy())
+                .lastModifiedDate(page.getLastModifiedDate())
                 .build();
+        MemberInfo memberInfo = memberInfoRepository.findById(memberId)
+                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+        List<Visited> visitedList = memberInfo.getVisited();
+        Visited visited = Visited.builder()
+                .pageId(pageId)
+                .visitedTime(LocalDateTime.now().toString())
+                .build();
+        visitedList.add(visited);
+        memberInfo.setVisited(visitedList);
         return getPageDetailResponse;
     }
 

@@ -3,11 +3,13 @@ package vn.edu.fpt.document.entity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
 import vn.edu.fpt.document.entity.common.Auditor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -33,11 +35,19 @@ public class _Page extends Auditor {
     @Field(name = "title")
     private String title;
     @Field(name = "content")
-    private String content;
+    @DBRef(lazy = true)
+    private List<_Content> contents = new ArrayList<>();
+    @Field(name = "current_version")
+    private Integer currentVersion;
+    @Field(name = "highest_version")
+    private Integer highestVersion;
     @Field(name = "pages")
     @Builder.Default
-    private List<_Page> pages;
+    @DBRef(lazy = true)
+    private List<_Page> pages = new ArrayList<>();
     @Field(name = "activities")
     @Builder.Default
-    private List<Activity> activities;
+    @DBRef(lazy = true)
+    private List<Activity> activities = new ArrayList<>();
+
 }

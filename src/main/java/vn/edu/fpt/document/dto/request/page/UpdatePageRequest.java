@@ -13,6 +13,7 @@ import java.io.Serializable;
 public class UpdatePageRequest implements Serializable {
 
     private static final long serialVersionUID = 3786148247557706557L;
+    private String memberId;
     private String title;
     private String content;
 }

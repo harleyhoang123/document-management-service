@@ -21,5 +21,5 @@ public interface PageController {
     ResponseEntity<GeneralResponse<Object>> deletePageInPage(@PathVariable(name = "parent-page-id") String parentPageId, @PathVariable(name = "page-id") String pageId);
 
     @GetMapping("/{page-id}")
-    ResponseEntity<GeneralResponse<GetPageDetailResponse>> getPageDetail(@PathVariable(name = "page-id") String pageId);
+    ResponseEntity<GeneralResponse<GetPageDetailResponse>> getPageDetail(@PathVariable(name = "page-id") String pageId, @PathVariable(name = "member-id") String memberId);
 }
