@@ -137,7 +137,7 @@ public class PageServiceImpl implements PageService {
                 .highestVersion(1)
                 .build();
         try {
-            page = pageRepository.save(childPage);
+            childPage = pageRepository.save(childPage);
             log.info("Create child page success");
         } catch (Exception ex) {
             throw new BusinessException("Can't create child page in database: " + ex.getMessage());
@@ -150,7 +150,7 @@ public class PageServiceImpl implements PageService {
         Activity activity = Activity.builder()
                 .changeBy(memberInfo)
                 .type(ActivityTypeEnum.HISTORY)
-                .changedData("created the document")
+                .changedData("created the page")
                 .build();
         try {
             activity = activityRepository.save(activity);
@@ -230,7 +230,7 @@ public class PageServiceImpl implements PageService {
         Activity activity = Activity.builder()
                 .changeBy(memberInfo)
                 .type(ActivityTypeEnum.HISTORY)
-                .changedData("created the Issue")
+                .changedData("Updated page")
                 .build();
 
         try {
@@ -262,9 +262,9 @@ public class PageServiceImpl implements PageService {
         }
         if (Objects.nonNull(request.getContent())) {
             List<_Content> contents = page.getContents();
-            _Content content = contents.stream().filter(m -> m.getContent().equals(request.getContent())).findFirst().get();
-            if (content == null) {
-                page.setCurrentVersion(content.getVersion());
+            Optional<_Content> content = contents.stream().filter(m -> m.getContent().equals(request.getContent())).findFirst();
+            if (content.isPresent()) {
+                page.setCurrentVersion(content.get().getVersion());
             } else {
                 Integer highestVersion = page.getHighestVersion();
                 _Content newContent = _Content.builder()
@@ -393,10 +393,12 @@ public class PageServiceImpl implements PageService {
         GetPageDetailResponse getPageDetailResponse = GetPageDetailResponse.builder()
                 .pageId(pageId)
                 .title(page.getTitle())
+                .version(page.getCurrentVersion())
                 .content(currentContent.getContent())
-                .subPages(page.getPages().stream().map(this::convertPageToGetPageResponse).collect(Collectors.toList()))
                 .activities(page.getActivities().stream().map(this::convertActivityToActivityResponse).collect(Collectors.toList()))
                 .createdBy(page.getCreatedBy())
+                .createdDate(page.getCreatedDate())
+                .lastModifiedBy(page.getLastModifiedBy())
                 .lastModifiedDate(page.getLastModifiedDate())
                 .build();
         MemberInfo memberInfo = memberInfoRepository.findById(memberId)

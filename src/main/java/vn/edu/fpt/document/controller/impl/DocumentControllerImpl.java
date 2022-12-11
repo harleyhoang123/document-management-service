@@ -7,15 +7,18 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.controller.DocumentController;
 import vn.edu.fpt.document.dto.common.GeneralResponse;
-import vn.edu.fpt.document.dto.event.CreateDocumentEvent;
+import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
 import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
-import vn.edu.fpt.document.dto.response.document.CreateDocumentResponse;
+import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentDetailResponse;
+import vn.edu.fpt.document.dto.response.document.GetPageOfDocumentResponse;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
 import vn.edu.fpt.document.factory.ResponseFactory;
 import vn.edu.fpt.document.service.DocumentService;
 import vn.edu.fpt.document.service.PageService;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,14 +30,19 @@ public class DocumentControllerImpl implements DocumentController {
     private final PageService pageService;
 
     @Override
-    public ResponseEntity<GeneralResponse<Object>> deleteDocument(String projectId) {
-        documentService.deleteDocument(projectId);
+    public ResponseEntity<GeneralResponse<Object>> deleteDocument(String documentId) {
+        documentService.deleteDocument(documentId);
         return responseFactory.response(ResponseStatusEnum.SUCCESS);
     }
 
     @Override
-    public ResponseEntity<GeneralResponse<GetDocumentDetailResponse>> getDocumentDetail(String projectId) {
-        return responseFactory.response(documentService.getDocumentDetail(projectId));
+    public ResponseEntity<GeneralResponse<GetDocumentDetailResponse>> getDocumentDetail(String documentId) {
+        return responseFactory.response(documentService.getDocumentDetail(documentId));
+    }
+
+    @Override
+    public ResponseEntity<GeneralResponse<List<GetPageOfDocumentResponse>>> getPageOfDocument(String documentId) {
+        return responseFactory.response(documentService.getPageOfDocument(documentId));
     }
 
     @Override
@@ -52,5 +60,10 @@ public class DocumentControllerImpl implements DocumentController {
     public ResponseEntity<GeneralResponse<Object>> deletePageInDocument(String documentId, String pageId) {
         pageService.deletePageInDocument(documentId, pageId);
         return responseFactory.response(ResponseStatusEnum.SUCCESS);
+    }
+
+    @Override
+    public ResponseEntity<GeneralResponse<PageableResponse<GetDocumentByAccountIdResponse>>> getDocumentByAccountId(String accountId) {
+        return responseFactory.response(documentService.getDocumentByAccountId(accountId));
     }
 }

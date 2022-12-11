@@ -32,6 +32,8 @@ public class _Document extends Auditor {
     @Id
     @Field(name = "_id", targetType = FieldType.OBJECT_ID)
     private String documentId;
+    @Field(name = "document_name")
+    private String documentName;
     @Field(name = "pages")
     @Builder.Default
     @DBRef(lazy = true)

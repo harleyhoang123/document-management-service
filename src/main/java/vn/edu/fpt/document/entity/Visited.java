@@ -2,7 +2,9 @@ package vn.edu.fpt.document.entity;
 
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -10,7 +12,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Setter
 @ToString
 @SuperBuilder
-public class Visited {
+public class Visited implements Serializable{
+
+    private static final long serialVersionUID = -1675617805660487289L;
     private String pageId;
-    private String visitedTime;
+    private LocalDateTime visitedTime;
 }

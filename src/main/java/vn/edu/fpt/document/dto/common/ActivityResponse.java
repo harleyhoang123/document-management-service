@@ -1,5 +1,6 @@
 package vn.edu.fpt.document.dto.common;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,11 +22,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Data
 @Builder
+@JsonPropertyOrder({"activityId", "type", "edited", "createdDate", "userInfo"})
 public class ActivityResponse implements Serializable {
 
     private static final long serialVersionUID = 3521089807347974621L;
-    private UserInfo userInfo;
+    private String activityId;
+    private ActivityTypeEnum type;
     private String edited;
-    private ActivityTypeEnum activityType;
     private LocalDateTime createdDate;
+    private UserInfoResponse userInfo;
 }

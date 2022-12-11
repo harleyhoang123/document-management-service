@@ -1,9 +1,6 @@
 package vn.edu.fpt.document.dto.response.page;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 import vn.edu.fpt.document.dto.common.ActivityResponse;
 import vn.edu.fpt.document.dto.common.AuditableResponse;
@@ -13,7 +10,9 @@ import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
-@Data
+@Getter
+@Setter
+@ToString
 @SuperBuilder
 public class GetPageDetailResponse extends AuditableResponse implements Serializable {
 
@@ -21,6 +20,6 @@ public class GetPageDetailResponse extends AuditableResponse implements Serializ
     private String pageId;
     private String title;
     private String content;
-    private List<GetPageResponse> subPages;
+    private Integer version;
     private List<ActivityResponse> activities;
 }

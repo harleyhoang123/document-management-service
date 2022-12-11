@@ -20,6 +20,6 @@ public interface PageController {
     @DeleteMapping("/{parent-page-id}/{page-id}")
     ResponseEntity<GeneralResponse<Object>> deletePageInPage(@PathVariable(name = "parent-page-id") String parentPageId, @PathVariable(name = "page-id") String pageId);
 
-    @GetMapping("/{page-id}")
+    @GetMapping("/{page-id}/{member-id}")
     ResponseEntity<GeneralResponse<GetPageDetailResponse>> getPageDetail(@PathVariable(name = "page-id") String pageId, @PathVariable(name = "member-id") String memberId);
 }

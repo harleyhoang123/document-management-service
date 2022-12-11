@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.context.i18n.LocaleContextHolder;
-import vn.edu.fpt.document.factory.config.datetime.CustomDateTimeSerializer;
+import vn.edu.fpt.document.config.datetime.CustomDateTimeSerializer;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 
 import java.io.Serializable;
