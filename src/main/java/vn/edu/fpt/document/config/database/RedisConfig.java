@@ -1,4 +1,4 @@
-package vn.edu.fpt.document.config.database;
+package vn.edu.fpt.account.config.database;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,10 +38,10 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisTemplate<String, String> redisTemplate() {
-        final RedisTemplate<String, String> template = new RedisTemplate<String, String>();
+    public RedisTemplate<String, Object> redisTemplate() {
+        final RedisTemplate<String, Object> template = new RedisTemplate<String, Object>();
         template.setConnectionFactory(jedisConnectionFactory());
-        template.setValueSerializer(new GenericToStringSerializer<String>(String.class));
+        template.setValueSerializer(new GenericToStringSerializer<Object>(Object.class));
         return template;
     }
 

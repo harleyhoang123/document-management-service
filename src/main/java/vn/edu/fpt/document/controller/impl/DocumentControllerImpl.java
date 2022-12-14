@@ -14,6 +14,7 @@ import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentDetailResponse;
 import vn.edu.fpt.document.dto.response.document.GetPageOfDocumentResponse;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
+import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
 import vn.edu.fpt.document.factory.ResponseFactory;
 import vn.edu.fpt.document.service.DocumentService;
 import vn.edu.fpt.document.service.PageService;
@@ -66,4 +67,5 @@ public class DocumentControllerImpl implements DocumentController {
     public ResponseEntity<GeneralResponse<PageableResponse<GetDocumentByAccountIdResponse>>> getDocumentByAccountId(String accountId) {
         return responseFactory.response(documentService.getDocumentByAccountId(accountId));
     }
+
 }

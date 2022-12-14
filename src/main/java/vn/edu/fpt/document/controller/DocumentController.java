@@ -11,6 +11,7 @@ import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentDetailResponse;
 import vn.edu.fpt.document.dto.response.document.GetPageOfDocumentResponse;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
+import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
 
 import java.util.List;
 
@@ -37,4 +38,5 @@ public interface DocumentController {
 
     @GetMapping("/account/{account-id}")
     ResponseEntity<GeneralResponse<PageableResponse<GetDocumentByAccountIdResponse>>> getDocumentByAccountId(@PathVariable(name = "account-id") String accountId);
+
 }

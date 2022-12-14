@@ -14,8 +14,8 @@ public interface PageController {
     @PostMapping("/{page-id}/page")
     ResponseEntity<GeneralResponse<CreatePageResponse>> createPageInPage(@PathVariable(name = "page-id") String pageId, @RequestBody CreatePageRequest request);
 
-    @PutMapping("/{parent-page-id}/{page-id}")
-    ResponseEntity<GeneralResponse<Object>> updatePageInPage(@PathVariable(name = "parent-page-id") String parentPageId, @PathVariable(name = "page-id") String pageId, UpdatePageRequest request);
+    @PutMapping("/{page-id}")
+    ResponseEntity<GeneralResponse<Object>> updatePageInPage(@PathVariable(name = "page-id") String pageId,@RequestBody UpdatePageRequest request);
 
     @DeleteMapping("/{parent-page-id}/{page-id}")
     ResponseEntity<GeneralResponse<Object>> deletePageInPage(@PathVariable(name = "parent-page-id") String parentPageId, @PathVariable(name = "page-id") String pageId);

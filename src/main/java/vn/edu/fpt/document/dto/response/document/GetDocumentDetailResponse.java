@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import vn.edu.fpt.document.dto.common.UserInfoResponse;
-import vn.edu.fpt.document.dto.response.page.GetPageResponse;
 
 import java.io.Serializable;
 import java.util.List;
@@ -17,7 +16,9 @@ import java.util.List;
 public class GetDocumentDetailResponse implements Serializable {
 
     private static final long serialVersionUID = 2662832600600560976L;
-    private String memberId;
-    private List<GetPageResponse> pages;
-    private List<UserInfoResponse> members;
+    private String documentId;
+    private String documentName;
+    private UserInfoResponse memberInfo;
+    private List<LeftOffPageResponse> leftOff;
+    private List<DiscoverPageResponse> discover;
 }

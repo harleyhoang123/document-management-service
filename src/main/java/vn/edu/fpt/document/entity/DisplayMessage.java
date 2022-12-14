@@ -17,14 +17,13 @@ import java.io.Serializable;
  * @created : 30/08/2022 - 19:37
  * @contact : 0834481768 - hoang.harley.work@gmail.com
  **/
-@Document(collection = "display_message")
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
 @Getter
 @ToString
 @SuperBuilder
-public class DisplayMessage extends Auditor implements Serializable {
+public class DisplayMessage implements Serializable {
 
     private static final long serialVersionUID = -2757240779293611765L;
     @Id

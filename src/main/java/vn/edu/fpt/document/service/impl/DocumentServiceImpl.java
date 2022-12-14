@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -19,15 +20,10 @@ import vn.edu.fpt.document.dto.cache.UserInfo;
 import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.common.UserInfoResponse;
 import vn.edu.fpt.document.dto.event.GenerateProjectAppEvent;
-import vn.edu.fpt.document.dto.response.document.CreateDocumentResponse;
-import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
-import vn.edu.fpt.document.dto.response.document.GetDocumentDetailResponse;
-import vn.edu.fpt.document.dto.response.document.GetPageOfDocumentResponse;
+import vn.edu.fpt.document.dto.response.document.*;
+import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageResponse;
-import vn.edu.fpt.document.entity.Activity;
-import vn.edu.fpt.document.entity.MemberInfo;
-import vn.edu.fpt.document.entity._Document;
-import vn.edu.fpt.document.entity._Page;
+import vn.edu.fpt.document.entity.*;
 import vn.edu.fpt.document.exception.BusinessException;
 import vn.edu.fpt.document.repository.DocumentRepository;
 import vn.edu.fpt.document.repository.MemberInfoRepository;
@@ -167,7 +163,6 @@ public class DocumentServiceImpl implements DocumentService {
     public GetDocumentDetailResponse getDocumentDetail(String documentId) {
         _Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document ID not exist"));
-        List<_Page> pages = document.getPages();
         List<MemberInfo> memberInfos = document.getMembers();
         String accountId = Optional.ofNullable(SecurityContextHolder.getContext())
                 .map(SecurityContext::getAuthentication)
@@ -177,10 +172,27 @@ public class DocumentServiceImpl implements DocumentService {
                 .map(User::getUsername).get();
         MemberInfo memberInfo = memberInfos.stream().filter(v -> v.getAccountId().equals(accountId)).findFirst()
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Account not in document"));
+        List<Visited> visited = memberInfo.getVisited();
+
         return GetDocumentDetailResponse.builder()
-                .memberId(memberInfo.getMemberId())
-                .pages(pages.stream().map(this::convertPageToGetPageResponse).collect(Collectors.toList()))
-                .members(memberInfos.stream().map(this::convertMemberInfoToUserInfoResponse).collect(Collectors.toList()))
+                .documentId(document.getDocumentId())
+                .documentName(document.getDocumentName())
+                .memberInfo(UserInfoResponse.builder()
+                        .accountId(accountId)
+                        .memberId(memberInfo.getMemberId())
+                        .userInfo(userInfoService.getUserInfo(accountId))
+                        .build())
+                .leftOff(visited.stream().map(this::convertVisitedToDocumentDetailResponse).collect(Collectors.toList()))
+                .discover(new ArrayList<>())
+                .build();
+    }
+
+    private LeftOffPageResponse convertVisitedToDocumentDetailResponse(Visited visited) {
+        _Page page = visited.getPage();
+        return LeftOffPageResponse.builder()
+                .pageId(page.getPageId())
+                .title(page.getTitle())
+                .visitedDate(visited.getVisitedTime())
                 .build();
     }
 

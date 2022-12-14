@@ -7,6 +7,7 @@ import vn.edu.fpt.document.dto.response.document.CreateDocumentResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentDetailResponse;
 import vn.edu.fpt.document.dto.response.document.GetPageOfDocumentResponse;
+import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
 
 import java.util.List;
 
@@ -20,4 +21,5 @@ public interface DocumentService {
     PageableResponse<GetDocumentByAccountIdResponse> getDocumentByAccountId(String accountId);
 
     List<GetPageOfDocumentResponse> getPageOfDocument(String documentId);
+
 }
