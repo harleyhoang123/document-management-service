@@ -3,6 +3,7 @@ package vn.edu.fpt.document.entity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
@@ -37,5 +38,6 @@ public class MemberInfo extends Auditor {
     private String role;
     @Field(name = "visited")
     @Builder.Default
+    @DBRef(lazy = true)
     private List<Visited> visited = new ArrayList<>();
 }

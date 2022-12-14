@@ -31,7 +31,7 @@ public class UserInfoServiceImpl implements UserInfoService {
             log.info("User info str: {}", userInfoStr);
             return objectMapper.readValue(userInfoStr, UserInfo.class);
         }catch (Exception ex){
-            log.error("Can't get userinfo in redis: {}", ex.getMessage());
+            log.error("Can't get userinfo: {} in redis: {}",accountId , ex.getMessage());
             return null;
         }
     }

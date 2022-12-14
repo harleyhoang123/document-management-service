@@ -3,14 +3,11 @@ package vn.edu.fpt.document.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import vn.edu.fpt.document.constant.ActivityTypeEnum;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.dto.common.ActivityResponse;
+import vn.edu.fpt.document.dto.common.UserInfoResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
 import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
@@ -39,6 +36,7 @@ public class PageServiceImpl implements PageService {
     private final ContentRepository contentRepository;
     private final MemberInfoRepository memberInfoRepository;
     private final ActivityRepository activityRepository;
+    private final VisitedRepository visitedRepository;
 
     @Override
     public CreatePageResponse createPageInDocument(String documentId, CreatePageRequest request) {
@@ -79,7 +77,7 @@ public class PageServiceImpl implements PageService {
         document.setPages(pages);
 
         MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         Activity activity = Activity.builder()
                 .changeBy(memberInfo)
                 .type(ActivityTypeEnum.HISTORY)
@@ -146,7 +144,7 @@ public class PageServiceImpl implements PageService {
         page.setPages(pages);
 
         MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         Activity activity = Activity.builder()
                 .changeBy(memberInfo)
                 .type(ActivityTypeEnum.HISTORY)
@@ -222,9 +220,9 @@ public class PageServiceImpl implements PageService {
             throw new BusinessException("Can't update page in database: " + ex.getMessage());
         }
         MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         List<MemberInfo> memberInfos = document.getMembers();
-        if (memberInfos.stream().noneMatch(m->m.getMemberId().equals(request.getMemberId()))) {
+        if (memberInfos.stream().noneMatch(m -> m.getMemberId().equals(request.getMemberId()))) {
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist in document");
         }
         Activity activity = Activity.builder()
@@ -242,28 +240,21 @@ public class PageServiceImpl implements PageService {
     }
 
     @Override
-    public void updatePageInPage(String parentPageId, String pageId, UpdatePageRequest request) {
-        if (!ObjectId.isValid(parentPageId)) {
-            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "ParentPageId ID invalid");
-        }
+    public void updatePageInPage( String pageId, UpdatePageRequest request) {
+
         if (!ObjectId.isValid(pageId)) {
-            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID invalid");
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id invalid");
         }
-        _Page parentPage = pageRepository.findById(parentPageId)
-                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Parent page ID not exist"));
-        List<_Page> childPages = parentPage.getPages();
+
         _Page page = pageRepository.findById(pageId)
-                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child Page ID not exist"));
-        if (Objects.nonNull(request.getTitle())) {
-            if (childPages.stream().anyMatch(m -> m.getTitle().equals(request.getTitle()))) {
-                throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Child page name already exist in document");
-            }
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        if(Objects.nonNull(request.getTitle())){
             page.setTitle(request.getTitle());
         }
         if (Objects.nonNull(request.getContent())) {
             List<_Content> contents = page.getContents();
-            Optional<_Content> content = contents.stream().filter(m -> m.getContent().equals(request.getContent())).findFirst();
-            if (content.isPresent()) {
+            Optional<_Content> content = contents.stream().filter(m -> m.getVersion().equals(page.getCurrentVersion())).findFirst();
+            if (content.isPresent() && content.get().getContent().equals(request.getContent())) {
                 page.setCurrentVersion(content.get().getVersion());
             } else {
                 Integer highestVersion = page.getHighestVersion();
@@ -280,11 +271,12 @@ public class PageServiceImpl implements PageService {
                 contents.add(newContent);
                 page.setContents(contents);
                 page.setHighestVersion(highestVersion);
+                page.setCurrentVersion(highestVersion);
             }
         }
 
         MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         Activity activity = Activity.builder()
                 .changeBy(memberInfo)
                 .type(ActivityTypeEnum.HISTORY)
@@ -402,14 +394,36 @@ public class PageServiceImpl implements PageService {
                 .lastModifiedDate(page.getLastModifiedDate())
                 .build();
         MemberInfo memberInfo = memberInfoRepository.findById(memberId)
-                .orElseThrow(()-> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         List<Visited> visitedList = memberInfo.getVisited();
-        Visited visited = Visited.builder()
-                .pageId(pageId)
-                .visitedTime(LocalDateTime.now().toString())
-                .build();
-        visitedList.add(visited);
-        memberInfo.setVisited(visitedList);
+        Optional<Visited> visitedOptional = visitedList.stream().filter(v -> v.getPage().getPageId().equals(pageId)).findAny();
+        boolean isFirstVisit = true;
+        Visited visited;
+        if (visitedOptional.isPresent()) {
+            visited = visitedOptional.get();
+            isFirstVisit = false;
+        } else {
+            visited = Visited.builder()
+                    .page(page)
+                    .build();
+        }
+
+        visited.setVisitedTime(LocalDateTime.now());
+        try {
+            visited = visitedRepository.save(visited);
+        } catch (Exception ex) {
+            throw new BusinessException("Can't save visited to database:" + ex.getMessage());
+        }
+        if (isFirstVisit) {
+            visitedList.add(visited);
+
+            memberInfo.setVisited(visitedList);
+            try {
+                memberInfoRepository.save(memberInfo);
+            } catch (Exception ex) {
+                throw new BusinessException("Can't save member info to database: " + ex.getMessage());
+            }
+        }
         return getPageDetailResponse;
     }
 
@@ -421,12 +435,16 @@ public class PageServiceImpl implements PageService {
     }
 
     private ActivityResponse convertActivityToActivityResponse(Activity activity) {
-
+        MemberInfo memberInfo = activity.getChangeBy();
         return ActivityResponse.builder()
-                .userInfo(userInfoService.getUserInfo(activity.getChangeBy().getAccountId()))
+                .userInfo(UserInfoResponse.builder()
+                        .accountId(memberInfo.getAccountId())
+                        .memberId(memberInfo.getMemberId())
+                        .userInfo(userInfoService.getUserInfo(memberInfo.getAccountId()))
+                        .build())
                 .edited(activity.getChangedData())
                 .createdDate(activity.getChangedDate())
-                .activityType(activity.getType())
+                .type(activity.getType())
                 .build();
     }
 }

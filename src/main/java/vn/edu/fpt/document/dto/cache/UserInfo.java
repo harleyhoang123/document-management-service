@@ -23,7 +23,7 @@ import java.util.List;
 @JsonPropertyOrder({"username", "email", "fullName", "avatar", "roles"})
 public class UserInfo implements Serializable {
 
-    private static final long serialVersionUID = 4689073615796931874L;
+    private static final long serialVersionUID = 4689073615496931874L;
     private String username;
     private String email;
     private String fullName;

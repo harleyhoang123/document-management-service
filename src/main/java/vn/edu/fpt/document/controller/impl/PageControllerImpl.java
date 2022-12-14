@@ -12,7 +12,6 @@ import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
 import vn.edu.fpt.document.factory.ResponseFactory;
-import vn.edu.fpt.document.service.DocumentService;
 import vn.edu.fpt.document.service.PageService;
 
 @RestController
@@ -29,8 +28,8 @@ public class PageControllerImpl implements PageController {
     }
 
     @Override
-    public ResponseEntity<GeneralResponse<Object>> updatePageInPage(String parentPageId, String pageId, UpdatePageRequest request) {
-        pageService.updatePageInPage(parentPageId, pageId, request);
+    public ResponseEntity<GeneralResponse<Object>> updatePageInPage( String pageId, UpdatePageRequest request) {
+        pageService.updatePageInPage(pageId, request);
         return responseFactory.response(ResponseStatusEnum.SUCCESS);
     }
 
