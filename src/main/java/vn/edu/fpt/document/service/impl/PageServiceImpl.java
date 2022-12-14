@@ -406,7 +406,7 @@ public class PageServiceImpl implements PageService {
         List<Visited> visitedList = memberInfo.getVisited();
         Visited visited = Visited.builder()
                 .pageId(pageId)
-                .visitedTime(LocalDateTime.now().toString())
+                .visitedTime(LocalDateTime.now())
                 .build();
         visitedList.add(visited);
         memberInfo.setVisited(visitedList);
