@@ -35,6 +35,9 @@ public class _Document extends Auditor {
     private String documentId;
     @Field(name = "document_name")
     private String documentName;
+    @Field(name = "overview")
+    @DBRef(lazy = true)
+    private _Page overview;
     @Field(name = "pages")
     @Builder.Default
     @DBRef(lazy = true)

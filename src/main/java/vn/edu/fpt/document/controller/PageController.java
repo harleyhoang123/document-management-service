@@ -22,4 +22,5 @@ public interface PageController {
 
     @GetMapping("/{page-id}/{member-id}")
     ResponseEntity<GeneralResponse<GetPageDetailResponse>> getPageDetail(@PathVariable(name = "page-id") String pageId, @PathVariable(name = "member-id") String memberId);
+
 }

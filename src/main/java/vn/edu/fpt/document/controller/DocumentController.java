@@ -6,7 +6,6 @@ import vn.edu.fpt.document.dto.common.GeneralResponse;
 import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
 import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
-import vn.edu.fpt.document.dto.response.document.CreateDocumentResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentDetailResponse;
 import vn.edu.fpt.document.dto.response.document.GetPageOfDocumentResponse;
@@ -20,6 +19,9 @@ public interface DocumentController {
 
     @DeleteMapping("/{document-id}")
     ResponseEntity<GeneralResponse<Object>> deleteDocument(@PathVariable(name = "document-id") String documentId);
+
+    @GetMapping("/{document-id}/overview")
+    ResponseEntity<GeneralResponse<GetPageDetailResponse>> getPageOverview(@PathVariable(name = "document-id") String documentId);
 
     @GetMapping("/{document-id}")
     ResponseEntity<GeneralResponse<GetDocumentDetailResponse>> getDocumentDetail(@PathVariable(name = "document-id") String documentId);

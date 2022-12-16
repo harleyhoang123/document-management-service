@@ -1,5 +1,6 @@
 package vn.edu.fpt.document.service.impl;
 
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -12,7 +13,6 @@ import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
 import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
-import vn.edu.fpt.document.dto.response.page.GetPageResponse;
 import vn.edu.fpt.document.entity.*;
 import vn.edu.fpt.document.exception.BusinessException;
 import vn.edu.fpt.document.repository.*;
@@ -41,10 +41,10 @@ public class PageServiceImpl implements PageService {
     @Override
     public CreatePageResponse createPageInDocument(String documentId, CreatePageRequest request) {
         if (!ObjectId.isValid(documentId)) {
-            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document ID invalid");
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document Id invalid in create page in document: " + documentId);
         }
         _Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document ID not exist"));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document Id not exist in create page in document: " + documentId));
         List<_Page> pages = document.getPages();
         if (pages.stream().anyMatch(m -> m.getTitle().equals(request.getTitle()))) {
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page title already exist");
@@ -240,7 +240,7 @@ public class PageServiceImpl implements PageService {
     }
 
     @Override
-    public void updatePageInPage( String pageId, UpdatePageRequest request) {
+    public void updatePageInPage(String pageId, UpdatePageRequest request) {
 
         if (!ObjectId.isValid(pageId)) {
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id invalid");
@@ -248,7 +248,7 @@ public class PageServiceImpl implements PageService {
 
         _Page page = pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
-        if(Objects.nonNull(request.getTitle())){
+        if (Objects.nonNull(request.getTitle())) {
             page.setTitle(request.getTitle());
         }
         if (Objects.nonNull(request.getContent())) {
@@ -381,7 +381,8 @@ public class PageServiceImpl implements PageService {
         _Page page = pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
         List<_Content> contents = page.getContents();
-        _Content currentContent = contents.stream().filter(m -> m.getVersion().equals(page.getCurrentVersion())).findFirst().get();
+        _Content currentContent = contents.stream().filter(m -> m.getVersion().equals(page.getCurrentVersion())).findFirst()
+                .orElseThrow(() -> new BusinessException("Current content not exist"));
         GetPageDetailResponse getPageDetailResponse = GetPageDetailResponse.builder()
                 .pageId(pageId)
                 .title(page.getTitle())
@@ -425,13 +426,6 @@ public class PageServiceImpl implements PageService {
             }
         }
         return getPageDetailResponse;
-    }
-
-    private GetPageResponse convertPageToGetPageResponse(_Page page) {
-        return GetPageResponse.builder()
-                .pageId(page.getPageId())
-                .title(page.getTitle())
-                .build();
     }
 
     private ActivityResponse convertActivityToActivityResponse(Activity activity) {

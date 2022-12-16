@@ -37,6 +37,11 @@ public class DocumentControllerImpl implements DocumentController {
     }
 
     @Override
+    public ResponseEntity<GeneralResponse<GetPageDetailResponse>> getPageOverview(String documentId) {
+        return responseFactory.response(documentService.getPageOverview(documentId));
+    }
+
+    @Override
     public ResponseEntity<GeneralResponse<GetDocumentDetailResponse>> getDocumentDetail(String documentId) {
         return responseFactory.response(documentService.getDocumentDetail(documentId));
     }
