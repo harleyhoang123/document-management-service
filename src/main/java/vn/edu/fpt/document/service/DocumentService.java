@@ -22,4 +22,5 @@ public interface DocumentService {
 
     List<GetPageOfDocumentResponse> getPageOfDocument(String documentId);
 
+    GetPageDetailResponse getPageOverview(String documentId);
 }

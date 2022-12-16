@@ -17,6 +17,7 @@ import vn.edu.fpt.document.constant.ActivityTypeEnum;
 import vn.edu.fpt.document.constant.DocumentRoleEnum;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.dto.cache.UserInfo;
+import vn.edu.fpt.document.dto.common.ActivityResponse;
 import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.common.UserInfoResponse;
 import vn.edu.fpt.document.dto.event.GenerateProjectAppEvent;
@@ -25,9 +26,7 @@ import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageResponse;
 import vn.edu.fpt.document.entity.*;
 import vn.edu.fpt.document.exception.BusinessException;
-import vn.edu.fpt.document.repository.DocumentRepository;
-import vn.edu.fpt.document.repository.MemberInfoRepository;
-import vn.edu.fpt.document.repository.PageRepository;
+import vn.edu.fpt.document.repository.*;
 import vn.edu.fpt.document.service.DocumentService;
 import vn.edu.fpt.document.service.UserInfoService;
 
@@ -43,11 +42,14 @@ public class DocumentServiceImpl implements DocumentService {
 
     private final MemberInfoRepository memberInfoRepository;
     private final DocumentRepository documentRepository;
-
+    private final ContentRepository contentRepository;
     private final PageRepository pageRepository;
-
+    private final ActivityRepository activityRepository;
     private final UserInfoService userInfoService;
     private final MongoTemplate mongoTemplate;
+
+    private static final String WELCOME_CONTENT = "<div style=\"background-color:rgb(227, 252, 239);\"><h3 style=\"text-align:start\"><strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">Welcome to your new space</span></span></strong></h3><p style=\"text-align:start\"><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">Use it to create something wonderful.</span></span></p><p style=\"text-align:start\"><strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">To start, you might want to:</span></span></strong></p><ul><li><p><strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">Customise this overview</span></span></strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">&nbsp;using the&nbsp;</span></span><strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">edit icon</span></span></strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">&nbsp;at the top right of this page.</span></span></p></li><li><p><strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">Create a new page</span></span></strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">&nbsp;by clicking the&nbsp;</span></span><strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">+</span></span></strong><span style=\"color:rgb(23, 43, 77);\"><span style=\"background-color:rgb(227, 252, 239);\">&nbsp;in the space sidebar, then go ahead and fill it with plans, ideas, or anything else your heart desires.</span></span></p></li></ul></div>";
+
 
     @Override
     public CreateDocumentResponse createDocument(GenerateProjectAppEvent event) {
@@ -64,10 +66,37 @@ public class DocumentServiceImpl implements DocumentService {
         List<MemberInfo> memberInfoList = new ArrayList<>();
         memberInfoList.add(memberInfo);
         Activity activity = Activity.builder()
-                .type(ActivityTypeEnum.COMMENT)
+                .type(ActivityTypeEnum.HISTORY)
                 .build();
+        try {
+            activity = activityRepository.save(activity);
+        }catch (Exception ex){
+            throw new BusinessException("Can't save activity to database: "+ ex.getMessage());
+        }
+        _Content content = _Content.builder()
+                .content(WELCOME_CONTENT)
+                .version(1)
+                .build();
+        try {
+            content = contentRepository.save(content);
+        }catch (Exception ex){
+            throw new BusinessException("Can't save content to database: "+ ex.getMessage());
+        }
+        _Page overview = _Page.builder()
+                .title(event.getProjectName())
+                .contents(List.of(content))
+                .currentVersion(1)
+                .highestVersion(1)
+                .activities(List.of(activity))
+                .build();
+        try {
+            overview = pageRepository.save(overview);
+        }catch (Exception ex){
+            throw new BusinessException("Can't save page repository in database: "+ ex.getMessage());
+        }
         _Document document = _Document.builder()
                 .documentId(event.getProjectId())
+                .overview(overview)
                 .members(memberInfoList)
                 .documentName(event.getProjectName())
                 .build();
@@ -132,6 +161,40 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public GetPageDetailResponse getPageOverview(String documentId) {
+        _Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new BusinessException(""));
+        _Page overview = document.getOverview();
+        _Content currentContent = overview.getContents().stream().filter(m -> m.getVersion().equals(overview.getCurrentVersion())).findFirst()
+                .orElseThrow(() -> new BusinessException(""));
+        return GetPageDetailResponse.builder()
+                .pageId(overview.getPageId())
+                .title(overview.getTitle())
+                .version(overview.getCurrentVersion())
+                .content(currentContent.getContent())
+                .activities(overview.getActivities().stream().map(this::convertActivityToActivityResponse).collect(Collectors.toList()))
+                .createdBy(overview.getCreatedBy())
+                .createdDate(overview.getCreatedDate())
+                .lastModifiedBy(overview.getLastModifiedBy())
+                .lastModifiedDate(overview.getLastModifiedDate())
+                .build();
+    }
+
+    private ActivityResponse convertActivityToActivityResponse(Activity activity) {
+        MemberInfo memberInfo = activity.getChangeBy();
+        return ActivityResponse.builder()
+                .userInfo(memberInfo != null ? UserInfoResponse.builder()
+                        .accountId(memberInfo.getAccountId())
+                        .memberId(memberInfo.getMemberId())
+                        .userInfo(userInfoService.getUserInfo(memberInfo.getAccountId()))
+                        .build(): null)
+                .edited(activity.getChangedData())
+                .createdDate(activity.getChangedDate())
+                .type(activity.getType())
+                .build();
+    }
+
+    @Override
     public List<GetPageOfDocumentResponse> getPageOfDocument(String documentId) {
         if(!ObjectId.isValid(documentId)){
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Document Id invalid");
@@ -153,9 +216,20 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     private GetDocumentByAccountIdResponse convertDocumentToGetDocumentByAccountIdResponse(_Document document) {
+        String accountId = Optional.ofNullable(SecurityContextHolder.getContext())
+                .map(SecurityContext::getAuthentication)
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getPrincipal)
+                .map(User.class::cast)
+                .map(User::getUsername)
+                .orElseThrow(() -> new BusinessException("Can't get account id from token"));
+        MemberInfo memberInfo = document.getMembers().stream().filter(v -> v.getAccountId().equals(accountId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("Account Id not in document"));
         return GetDocumentByAccountIdResponse.builder()
                 .documentId(document.getDocumentId())
                 .documentName(document.getDocumentName())
+                .memberId(memberInfo.getMemberId())
                 .build();
     }
 

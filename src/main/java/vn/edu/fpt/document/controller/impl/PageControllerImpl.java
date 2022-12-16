@@ -44,4 +44,5 @@ public class PageControllerImpl implements PageController {
     public ResponseEntity<GeneralResponse<GetPageDetailResponse>> getPageDetail(String pageId, String memberId) {
         return responseFactory.response(pageService.getPageDetail(pageId, memberId));
     }
+
 }

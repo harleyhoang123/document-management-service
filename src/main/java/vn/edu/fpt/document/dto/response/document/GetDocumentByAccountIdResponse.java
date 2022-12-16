@@ -23,4 +23,5 @@ public class GetDocumentByAccountIdResponse implements Serializable {
     private static final long serialVersionUID = -4970399399493502453L;
     private String documentId;
     private String documentName;
+    private String memberId;
 }

@@ -19,4 +19,5 @@ public interface PageService {
     void deletePageInPage(String parentPageId, String childPageId);
 
     GetPageDetailResponse getPageDetail(String pageId, String memberId);
+
 }
