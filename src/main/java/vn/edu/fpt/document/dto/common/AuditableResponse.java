@@ -22,8 +22,8 @@ import java.time.LocalDateTime;
 public abstract class AuditableResponse implements Serializable {
 
     private static final long serialVersionUID = -8406677523279755332L;
-    protected String createdBy;
+    protected UserInfoResponse createdBy;
     protected LocalDateTime createdDate;
-    protected String lastModifiedBy;
+    protected UserInfoResponse lastModifiedBy;
     protected LocalDateTime lastModifiedDate;
 }

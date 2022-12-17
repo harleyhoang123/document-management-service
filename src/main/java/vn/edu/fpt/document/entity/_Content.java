@@ -3,9 +3,11 @@ package vn.edu.fpt.document.entity;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
+import vn.edu.fpt.document.entity.common.Auditor;
 
 @Document(collection = "contents")
 @AllArgsConstructor
@@ -14,7 +16,7 @@ import org.springframework.data.mongodb.core.mapping.FieldType;
 @Setter
 @ToString
 @SuperBuilder
-public class _Content {
+public class _Content extends Auditor {
     @Id
     @Field(name = "_id", targetType = FieldType.OBJECT_ID)
     private String contentId;

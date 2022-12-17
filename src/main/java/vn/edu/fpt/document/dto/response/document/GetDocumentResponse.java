@@ -16,5 +16,4 @@ public class GetDocumentResponse implements Serializable {
     private static final long serialVersionUID = 3112167789601807296L;
     private String documentId;
     private String documentName;
-    private
 }

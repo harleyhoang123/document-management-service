@@ -7,10 +7,12 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.controller.PageController;
 import vn.edu.fpt.document.dto.common.GeneralResponse;
+import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
 import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
+import vn.edu.fpt.document.dto.response.page.GetPageVersionsResponse;
 import vn.edu.fpt.document.factory.ResponseFactory;
 import vn.edu.fpt.document.service.PageService;
 
@@ -45,4 +47,20 @@ public class PageControllerImpl implements PageController {
         return responseFactory.response(pageService.getPageDetail(pageId, memberId));
     }
 
+    @Override
+    public ResponseEntity<GeneralResponse<Object>> lockPage(String pageId) {
+        pageService.lockPage(pageId);
+        return responseFactory.response(ResponseStatusEnum.SUCCESS);
+    }
+
+    @Override
+    public ResponseEntity<GeneralResponse<PageableResponse<GetPageVersionsResponse>>> getPageVersions(String pageId) {
+        return responseFactory.response(pageService.getPageVersions(pageId), ResponseStatusEnum.SUCCESS);
+    }
+
+    @Override
+    public ResponseEntity<GeneralResponse<Object>> convertVersion(String pageId, String contentId) {
+        pageService.revertVersion(pageId, contentId);
+        return responseFactory.response(ResponseStatusEnum.SUCCESS);
+    }
 }

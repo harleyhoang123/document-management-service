@@ -167,15 +167,17 @@ public class DocumentServiceImpl implements DocumentService {
         _Page overview = document.getOverview();
         _Content currentContent = overview.getContents().stream().filter(m -> m.getVersion().equals(overview.getCurrentVersion())).findFirst()
                 .orElseThrow(() -> new BusinessException(""));
+        MemberInfo memberInfo = memberInfoRepository.findById(overview.getCreatedBy())
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         return GetPageDetailResponse.builder()
                 .pageId(overview.getPageId())
                 .title(overview.getTitle())
                 .version(overview.getCurrentVersion())
                 .content(currentContent.getContent())
                 .activities(overview.getActivities().stream().map(this::convertActivityToActivityResponse).collect(Collectors.toList()))
-                .createdBy(overview.getCreatedBy())
+                .createdBy(convertMemberInfoToUserInfoResponse(memberInfo))
                 .createdDate(overview.getCreatedDate())
-                .lastModifiedBy(overview.getLastModifiedBy())
+                .lastModifiedBy(convertMemberInfoToUserInfoResponse(memberInfo))
                 .lastModifiedDate(overview.getLastModifiedDate())
                 .build();
     }

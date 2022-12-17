@@ -8,11 +8,14 @@ import org.springframework.stereotype.Service;
 import vn.edu.fpt.document.constant.ActivityTypeEnum;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.dto.common.ActivityResponse;
+import vn.edu.fpt.document.dto.common.MemberInfoResponse;
+import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.common.UserInfoResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
 import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
 import vn.edu.fpt.document.dto.response.page.CreatePageResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
+import vn.edu.fpt.document.dto.response.page.GetPageVersionsResponse;
 import vn.edu.fpt.document.entity.*;
 import vn.edu.fpt.document.exception.BusinessException;
 import vn.edu.fpt.document.repository.*;
@@ -52,6 +55,8 @@ public class PageServiceImpl implements PageService {
         _Content content = _Content.builder()
                 .content(request.getContent())
                 .version(1)
+                .createdBy(request.getMemberId())
+                .createdDate(LocalDateTime.now())
                 .build();
         try {
             content = contentRepository.save(content);
@@ -248,6 +253,8 @@ public class PageServiceImpl implements PageService {
 
         _Page page = pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         if (Objects.nonNull(request.getTitle())) {
             page.setTitle(request.getTitle());
         }
@@ -261,6 +268,8 @@ public class PageServiceImpl implements PageService {
                 _Content newContent = _Content.builder()
                         .content(request.getContent())
                         .version(++highestVersion)
+                        .createdBy(request.getMemberId())
+                        .createdDate(LocalDateTime.now())
                         .build();
                 try {
                     newContent = contentRepository.save(newContent);
@@ -275,8 +284,7 @@ public class PageServiceImpl implements PageService {
             }
         }
 
-        MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
-                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+
         Activity activity = Activity.builder()
                 .changeBy(memberInfo)
                 .type(ActivityTypeEnum.HISTORY)
@@ -380,6 +388,8 @@ public class PageServiceImpl implements PageService {
         }
         _Page page = pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        MemberInfo memberInfo = memberInfoRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         List<_Content> contents = page.getContents();
         _Content currentContent = contents.stream().filter(m -> m.getVersion().equals(page.getCurrentVersion())).findFirst()
                 .orElseThrow(() -> new BusinessException("Current content not exist"));
@@ -388,14 +398,14 @@ public class PageServiceImpl implements PageService {
                 .title(page.getTitle())
                 .version(page.getCurrentVersion())
                 .content(currentContent.getContent())
+                .isLocked(page.isLocked())
                 .activities(page.getActivities().stream().map(this::convertActivityToActivityResponse).collect(Collectors.toList()))
-                .createdBy(page.getCreatedBy())
+                .createdBy(convertMemberInfoToUserInfoResponse(memberInfo))
                 .createdDate(page.getCreatedDate())
-                .lastModifiedBy(page.getLastModifiedBy())
+                .lastModifiedBy(convertMemberInfoToUserInfoResponse(memberInfo))
                 .lastModifiedDate(page.getLastModifiedDate())
                 .build();
-        MemberInfo memberInfo = memberInfoRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+
         List<Visited> visitedList = memberInfo.getVisited();
         Optional<Visited> visitedOptional = visitedList.stream().filter(v -> v.getPage().getPageId().equals(pageId)).findAny();
         boolean isFirstVisit = true;
@@ -428,6 +438,14 @@ public class PageServiceImpl implements PageService {
         return getPageDetailResponse;
     }
 
+    private UserInfoResponse convertMemberInfoToUserInfoResponse(MemberInfo memberInfo) {
+        return UserInfoResponse.builder()
+                .memberId(memberInfo.getMemberId())
+                .accountId(memberInfo.getAccountId())
+                .userInfo(userInfoService.getUserInfo(memberInfo.getAccountId()))
+                .build();
+    }
+
     private ActivityResponse convertActivityToActivityResponse(Activity activity) {
         MemberInfo memberInfo = activity.getChangeBy();
         return ActivityResponse.builder()
@@ -440,5 +458,62 @@ public class PageServiceImpl implements PageService {
                 .createdDate(activity.getChangedDate())
                 .type(activity.getType())
                 .build();
+    }
+
+
+
+    @Override
+    public void lockPage(String pageId) {
+        if (!ObjectId.isValid(pageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id invalid");
+        }
+
+        _Page page = pageRepository.findById(pageId)
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        if (page.isLocked()) {
+            page.setLocked(!page.isLocked());
+        }
+        try {
+            pageRepository.save(page);
+            log.info("Close page success");
+        } catch (Exception ex) {
+            throw new BusinessException("Can't update page in database: " + ex.getMessage());
+        }
+    }
+
+    @Override
+    public PageableResponse<GetPageVersionsResponse> getPageVersions(String pageId) {
+        if (!ObjectId.isValid(pageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id invalid");
+        }
+        _Page page = pageRepository.findById(pageId)
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        List<GetPageVersionsResponse> getPageVersionsResponses = page.getContents().stream().map((this::convertContentToGetPageVersionsResponse)).collect(Collectors.toList());
+        return new PageableResponse<> (getPageVersionsResponses);
+    }
+
+    private GetPageVersionsResponse convertContentToGetPageVersionsResponse(_Content content) {
+        MemberInfo memberInfo = memberInfoRepository.findById(content.getCreatedBy())
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
+        return GetPageVersionsResponse.builder()
+                .contentId(content.getContentId())
+                .version(content.getVersion())
+                .createdBy(convertMemberInfoToUserInfoResponse(memberInfo))
+                .createdDate(content.getCreatedDate())
+                .build();
+    }
+
+    public void revertVersion(String pageId, String contentId) {
+        if (!ObjectId.isValid(pageId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id invalid");
+        }
+        if (!ObjectId.isValid(contentId)) {
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Content Id invalid");
+        }
+        _Page page = pageRepository.findById(pageId)
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        _Content content = contentRepository.findById(contentId)
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Content ID not exist"));
+        page.setCurrentVersion(content.getVersion());
     }
 }

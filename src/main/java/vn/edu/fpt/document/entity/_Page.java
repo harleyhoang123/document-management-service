@@ -41,6 +41,9 @@ public class _Page extends Auditor {
     private Integer currentVersion;
     @Field(name = "highest_version")
     private Integer highestVersion;
+    @Field(name = "is_locked")
+    @Builder.Default
+    private boolean isLocked = false;
     @Field(name = "pages")
     @Builder.Default
     @DBRef(lazy = true)
