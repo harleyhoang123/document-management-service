@@ -1,5 +1,6 @@
 package vn.edu.fpt.document.filter;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -20,10 +21,13 @@ import java.io.IOException;
  **/
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@Slf4j
 public class CorsFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        log.info("URL called: {}", request.getRequestURI());
+
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setHeader("Access-Control-Allow-Credentials", "true");
         response.setHeader("Access-Control-Allow-Methods",

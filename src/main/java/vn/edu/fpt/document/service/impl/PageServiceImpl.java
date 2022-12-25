@@ -4,11 +4,13 @@ package vn.edu.fpt.document.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import vn.edu.fpt.document.constant.ActivityTypeEnum;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.dto.common.ActivityResponse;
-import vn.edu.fpt.document.dto.common.MemberInfoResponse;
 import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.common.UserInfoResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
@@ -40,6 +42,7 @@ public class PageServiceImpl implements PageService {
     private final MemberInfoRepository memberInfoRepository;
     private final ActivityRepository activityRepository;
     private final VisitedRepository visitedRepository;
+    private final MongoTemplate mongoTemplate;
 
     @Override
     public CreatePageResponse createPageInDocument(String documentId, CreatePageRequest request) {
@@ -189,6 +192,9 @@ public class PageServiceImpl implements PageService {
         List<_Page> pages = document.getPages();
         _Page page = pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        if(page.isLocked()){
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page is locked");
+        }
         if (Objects.nonNull(request.getTitle())) {
             if (pages.stream().anyMatch(m -> m.getTitle().equals(request.getTitle()))) {
                 throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page name already exist in document");
@@ -253,6 +259,9 @@ public class PageServiceImpl implements PageService {
 
         _Page page = pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
+        if(page.isLocked()){
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page is locked");
+        }
         MemberInfo memberInfo = memberInfoRepository.findById(request.getMemberId())
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         if (Objects.nonNull(request.getTitle())) {
@@ -308,6 +317,73 @@ public class PageServiceImpl implements PageService {
             throw new BusinessException("Can't update page in database: " + ex.getMessage());
         }
 
+    }
+
+    @Override
+    public void deletePage(String pageId){
+        if(!ObjectId.isValid(pageId)){
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id in delete page invalid: "+ pageId);
+        }
+        _Page page = pageRepository.findById(pageId)
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id not exist when delete page: "+ pageId));
+        try {
+            pageRepository.delete(page);
+        }catch (Exception ex){
+            throw new BusinessException("Can't delete page in database: "+ ex.getMessage());
+        }
+        deleteSubPage(page.getPages());
+        deleteParentPage(pageId);
+        deleteInDocument(pageId);
+        deleteVisited(pageId);
+    }
+
+    private void deleteParentPage(String pageId){
+        Query query = new Query();
+        query.addCriteria(Criteria.where("pages.$id").in(List.of(new ObjectId(pageId))));
+        List<_Page> pages = mongoTemplate.find(query, _Page.class);
+        if(!pages.isEmpty()){
+            pages.forEach(v -> {
+                List<_Page> listSubPage = v.getPages();
+                v.setPages(listSubPage.stream().filter(Objects::nonNull).collect(Collectors.toList()));
+                try {
+                    pageRepository.save(v);
+                }catch (Exception ex){
+                    throw new BusinessException("Can't delete null pages when delete parent page: "+ ex.getMessage());
+                }
+            });
+        }
+
+    }
+    private void deleteVisited(String pageId){
+        Query query = new Query();
+        query.addCriteria(Criteria.where("page").is(new ObjectId(pageId)));
+        List<Visited> visited = mongoTemplate.find(query, Visited.class);
+        try {
+            visitedRepository.deleteAll(visited);
+        }catch (Exception ex){
+            throw new BusinessException("Can't delete visited when delete page: "+ ex.getMessage());
+        }
+    }
+
+    private void deleteSubPage(List<_Page> pages){
+        pages.forEach(v -> deletePage(v.getPageId()));
+    }
+
+    private void deleteInDocument(String pageId){
+        log.info("DELETE PARENT PAGE OF: "+ pageId);
+        Query query = new Query();
+        query.addCriteria(Criteria.where("pages.$id").in(List.of(new ObjectId(pageId))));
+        List<_Document> documents = mongoTemplate.find(query, _Document.class);
+        if(!documents.isEmpty()){
+            try {
+                _Document document = documents.get(0);
+                List<_Page> pages = document.getPages().stream().filter(v -> Objects.nonNull(v)).collect(Collectors.toList());
+                document.setPages(pages);
+                documentRepository.save(document);
+            }catch (Exception ex){
+                throw new BusinessException("Can't delete parent page in database");
+            }
+        }
     }
 
     @Override
@@ -398,7 +474,7 @@ public class PageServiceImpl implements PageService {
                 .title(page.getTitle())
                 .version(page.getCurrentVersion())
                 .content(currentContent.getContent())
-                .isLocked(page.isLocked())
+                .locked(page.isLocked())
                 .activities(page.getActivities().stream().map(this::convertActivityToActivityResponse).collect(Collectors.toList()))
                 .createdBy(convertMemberInfoToUserInfoResponse(memberInfo))
                 .createdDate(page.getCreatedDate())
@@ -406,35 +482,6 @@ public class PageServiceImpl implements PageService {
                 .lastModifiedDate(page.getLastModifiedDate())
                 .build();
 
-        List<Visited> visitedList = memberInfo.getVisited();
-        Optional<Visited> visitedOptional = visitedList.stream().filter(v -> v.getPage().getPageId().equals(pageId)).findAny();
-        boolean isFirstVisit = true;
-        Visited visited;
-        if (visitedOptional.isPresent()) {
-            visited = visitedOptional.get();
-            isFirstVisit = false;
-        } else {
-            visited = Visited.builder()
-                    .page(page)
-                    .build();
-        }
-
-        visited.setVisitedTime(LocalDateTime.now());
-        try {
-            visited = visitedRepository.save(visited);
-        } catch (Exception ex) {
-            throw new BusinessException("Can't save visited to database:" + ex.getMessage());
-        }
-        if (isFirstVisit) {
-            visitedList.add(visited);
-
-            memberInfo.setVisited(visitedList);
-            try {
-                memberInfoRepository.save(memberInfo);
-            } catch (Exception ex) {
-                throw new BusinessException("Can't save member info to database: " + ex.getMessage());
-            }
-        }
         return getPageDetailResponse;
     }
 
@@ -471,7 +518,9 @@ public class PageServiceImpl implements PageService {
         _Page page = pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page ID not exist"));
         if (page.isLocked()) {
-            page.setLocked(!page.isLocked());
+            page.setLocked(true);
+        }else{
+            page.setLocked(false);
         }
         try {
             pageRepository.save(page);
@@ -480,6 +529,7 @@ public class PageServiceImpl implements PageService {
             throw new BusinessException("Can't update page in database: " + ex.getMessage());
         }
     }
+
 
     @Override
     public PageableResponse<GetPageVersionsResponse> getPageVersions(String pageId) {

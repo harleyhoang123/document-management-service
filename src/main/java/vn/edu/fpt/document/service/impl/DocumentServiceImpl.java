@@ -21,6 +21,7 @@ import vn.edu.fpt.document.dto.common.ActivityResponse;
 import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.common.UserInfoResponse;
 import vn.edu.fpt.document.dto.event.GenerateProjectAppEvent;
+import vn.edu.fpt.document.dto.request.document.GetMemberIdResponse;
 import vn.edu.fpt.document.dto.response.document.*;
 import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
 import vn.edu.fpt.document.dto.response.page.GetPageResponse;
@@ -167,17 +168,13 @@ public class DocumentServiceImpl implements DocumentService {
         _Page overview = document.getOverview();
         _Content currentContent = overview.getContents().stream().filter(m -> m.getVersion().equals(overview.getCurrentVersion())).findFirst()
                 .orElseThrow(() -> new BusinessException(""));
-        MemberInfo memberInfo = memberInfoRepository.findById(overview.getCreatedBy())
-                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Member info not exist"));
         return GetPageDetailResponse.builder()
                 .pageId(overview.getPageId())
                 .title(overview.getTitle())
                 .version(overview.getCurrentVersion())
                 .content(currentContent.getContent())
                 .activities(overview.getActivities().stream().map(this::convertActivityToActivityResponse).collect(Collectors.toList()))
-                .createdBy(convertMemberInfoToUserInfoResponse(memberInfo))
                 .createdDate(overview.getCreatedDate())
-                .lastModifiedBy(convertMemberInfoToUserInfoResponse(memberInfo))
                 .lastModifiedDate(overview.getLastModifiedDate())
                 .build();
     }
@@ -260,6 +257,23 @@ public class DocumentServiceImpl implements DocumentService {
                         .build())
                 .leftOff(visited.stream().map(this::convertVisitedToDocumentDetailResponse).collect(Collectors.toList()))
                 .discover(new ArrayList<>())
+                .build();
+    }
+
+
+    @Override
+    public GetMemberIdResponse getMemberId(String documentId) {
+        String accountId = Optional.ofNullable(SecurityContextHolder.getContext())
+                .map(SecurityContext::getAuthentication)
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getPrincipal)
+                .map(User.class::cast)
+                .map(User::getUsername).orElseThrow();
+
+        _Document document = documentRepository.findById(documentId).orElseThrow();
+        MemberInfo memberInfo = document.getMembers().stream().filter(v -> v.getAccountId().equals(accountId)).findAny().orElseThrow();
+        return GetMemberIdResponse.builder()
+                .memberId(memberInfo.getMemberId())
                 .build();
     }
 

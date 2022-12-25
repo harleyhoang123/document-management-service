@@ -1,5 +1,6 @@
 package vn.edu.fpt.document.controller;
 
+import com.amazonaws.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.document.dto.common.GeneralResponse;
@@ -33,4 +34,7 @@ public interface PageController {
 
     @PutMapping("/{page-id}/{content-id}")
     ResponseEntity<GeneralResponse<Object>> convertVersion(@PathVariable(name = "page-id") String pageId, @PathVariable(name = "content-id") String contentId);
+
+    @DeleteMapping("/{page-id}")
+    ResponseEntity<GeneralResponse<Object>> deletePage(@PathVariable(name = "page-id") String pageId);
 }

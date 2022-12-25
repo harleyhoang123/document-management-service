@@ -63,4 +63,10 @@ public class PageControllerImpl implements PageController {
         pageService.revertVersion(pageId, contentId);
         return responseFactory.response(ResponseStatusEnum.SUCCESS);
     }
+
+    @Override
+    public ResponseEntity<GeneralResponse<Object>> deletePage(String pageId) {
+        pageService.deletePage(pageId);
+        return responseFactory.response(ResponseStatusEnum.SUCCESS);
+    }
 }

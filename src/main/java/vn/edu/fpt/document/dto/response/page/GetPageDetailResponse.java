@@ -22,5 +22,5 @@ public class GetPageDetailResponse extends AuditableResponse implements Serializ
     private String content;
     private Integer version;
     private List<ActivityResponse> activities;
-    private boolean isLocked;
+    private boolean locked;
 }

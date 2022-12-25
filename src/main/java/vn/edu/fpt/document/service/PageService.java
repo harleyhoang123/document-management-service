@@ -27,4 +27,6 @@ public interface PageService {
     PageableResponse<GetPageVersionsResponse> getPageVersions(String pageId);
 
     void revertVersion(String pageId, String contentId);
+
+    void deletePage(String pageId);
 }

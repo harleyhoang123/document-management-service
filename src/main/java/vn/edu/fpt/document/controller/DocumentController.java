@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.document.dto.common.GeneralResponse;
 import vn.edu.fpt.document.dto.common.PageableResponse;
+import vn.edu.fpt.document.dto.request.document.GetMemberIdResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
 import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
 import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
@@ -41,4 +42,6 @@ public interface DocumentController {
     @GetMapping("/account/{account-id}")
     ResponseEntity<GeneralResponse<PageableResponse<GetDocumentByAccountIdResponse>>> getDocumentByAccountId(@PathVariable(name = "account-id") String accountId);
 
+    @GetMapping("/{document-id}/account")
+    ResponseEntity<GeneralResponse<GetMemberIdResponse>> getMemberId(@PathVariable(name = "document-id") String documentId);
 }

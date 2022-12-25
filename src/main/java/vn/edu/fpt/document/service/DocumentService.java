@@ -3,6 +3,7 @@ package vn.edu.fpt.document.service;
 import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.event.GenerateProjectAppEvent;
+import vn.edu.fpt.document.dto.request.document.GetMemberIdResponse;
 import vn.edu.fpt.document.dto.response.document.CreateDocumentResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
 import vn.edu.fpt.document.dto.response.document.GetDocumentDetailResponse;
@@ -23,4 +24,6 @@ public interface DocumentService {
     List<GetPageOfDocumentResponse> getPageOfDocument(String documentId);
 
     GetPageDetailResponse getPageOverview(String documentId);
+
+    GetMemberIdResponse getMemberId(String documentId);
 }

@@ -104,7 +104,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if(Objects.isNull(ex)){
             return responseFactory.response(ResponseStatusEnum.INTERNAL_SERVER_ERROR, "Exception missing handler details");
         }
-        log.error("Exception: {}", ex.getMessage());
+        log.error("Exception global: {}", ex.getMessage());
+        ex.printStackTrace();
 
         return responseFactory.response(ResponseStatusEnum.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
@@ -114,8 +115,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if(Objects.isNull(ex)){
             return responseFactory.response(ResponseStatusEnum.INTERNAL_SERVER_ERROR, "Exception missing handler details");
         }
-        log.error("Exception: {}", ex.getMessage());
-
+        log.error("LazyLoadingException: {}", ex.getMessage());
+        ex.printStackTrace();
         return responseFactory.response(ResponseStatusEnum.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
 

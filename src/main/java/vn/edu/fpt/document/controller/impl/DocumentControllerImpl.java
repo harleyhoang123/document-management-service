@@ -8,6 +8,7 @@ import vn.edu.fpt.document.constant.ResponseStatusEnum;
 import vn.edu.fpt.document.controller.DocumentController;
 import vn.edu.fpt.document.dto.common.GeneralResponse;
 import vn.edu.fpt.document.dto.common.PageableResponse;
+import vn.edu.fpt.document.dto.request.document.GetMemberIdResponse;
 import vn.edu.fpt.document.dto.request.page.CreatePageRequest;
 import vn.edu.fpt.document.dto.request.page.UpdatePageRequest;
 import vn.edu.fpt.document.dto.response.document.GetDocumentByAccountIdResponse;
@@ -73,4 +74,8 @@ public class DocumentControllerImpl implements DocumentController {
         return responseFactory.response(documentService.getDocumentByAccountId(accountId));
     }
 
+    @Override
+    public ResponseEntity<GeneralResponse<GetMemberIdResponse>> getMemberId(String documentId) {
+        return responseFactory.response(documentService.getMemberId(documentId));
+    }
 }
