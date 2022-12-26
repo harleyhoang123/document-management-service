@@ -325,7 +325,18 @@ public class PageServiceImpl implements PageService {
             throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id in delete page invalid: "+ pageId);
         }
         _Page page = pageRepository.findById(pageId)
-                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Page Id not exist when delete page: "+ pageId));
+                .orElseThrow(() -> new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Can't delete this page"));
+        Query query = new Query();
+        query.addCriteria(Criteria.where("overview.$id").is(new ObjectId( page.getPageId())));
+        long count;
+        try {
+            count = mongoTemplate.count(query, _Document.class);
+        }catch (Exception ex){
+            throw new BusinessException("Can't find page by page id");
+        }
+        if(count > 0){
+            throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "You can't delete page overview");
+        }
         try {
             pageRepository.delete(page);
         }catch (Exception ex){
