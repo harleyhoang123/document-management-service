@@ -495,6 +495,9 @@ public class PageServiceImpl implements PageService {
 
     private ActivityResponse convertActivityToActivityResponse(Activity activity) {
         MemberInfo memberInfo = activity.getChangeBy();
+        if(Objects.isNull(memberInfo)){
+            return null;
+        }
         return ActivityResponse.builder()
                 .userInfo(UserInfoResponse.builder()
                         .accountId(memberInfo.getAccountId())
