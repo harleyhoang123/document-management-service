@@ -21,6 +21,7 @@ import vn.edu.fpt.document.dto.common.ActivityResponse;
 import vn.edu.fpt.document.dto.common.PageableResponse;
 import vn.edu.fpt.document.dto.common.UserInfoResponse;
 import vn.edu.fpt.document.dto.event.GenerateProjectAppEvent;
+import vn.edu.fpt.document.dto.event.ModifyMembersToWorkspaceEvent;
 import vn.edu.fpt.document.dto.request.document.GetMemberIdResponse;
 import vn.edu.fpt.document.dto.response.document.*;
 import vn.edu.fpt.document.dto.response.page.GetPageDetailResponse;
@@ -304,5 +305,56 @@ public class DocumentServiceImpl implements DocumentService {
                 .pageId(page.getPageId())
                 .title(page.getTitle())
                 .build();
+    }
+
+    @Override
+    public void modifyMembersToWorkspace(ModifyMembersToWorkspaceEvent event) {
+        _Document document = documentRepository.findById(event.getWorkspaceId())
+                .orElseThrow();
+        List<MemberInfo> memberInfos = document.getMembers();
+        if (event.getType().equals("ADD")) {
+            if (memberInfos.stream().anyMatch(m -> m.getAccountId().equals(event.getAccountId()))) {
+                throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Account ID is already exist in Workspace");
+            }
+            MemberInfo memberInfo = MemberInfo.builder()
+                    .accountId(event.getAccountId())
+                    .role(DocumentRoleEnum.MEMBER.getRole())
+                    .build();
+            try {
+                memberInfo = memberInfoRepository.save(memberInfo);
+                log.info("Create memberInfo success: {}", memberInfo);
+            } catch (Exception ex) {
+                throw new BusinessException("Can't create memberInfo to database: " + ex.getMessage());
+            }
+
+            memberInfos.add(memberInfo);
+            document.setMembers(memberInfos);
+            try {
+                documentRepository.save(document);
+                log.info("Add member to workspace success: {}", memberInfo);
+            } catch (Exception ex) {
+                throw new BusinessException("Can't add member to workspace in database: " + ex.getMessage());
+            }
+        } else {
+            MemberInfo memberInfo = memberInfos.stream().filter(m -> m.getAccountId().equals(event.getAccountId())).findFirst().get();
+            if (memberInfo == null) {
+                throw new BusinessException(ResponseStatusEnum.BAD_REQUEST, "Account ID is not exist in Workspace");
+            }
+            memberInfos.removeIf(m -> m.getAccountId().equals(event.getAccountId()));
+            document.setMembers(memberInfos);
+            try {
+                documentRepository.save(document);
+                log.info("Delete member from workspace success: {}", memberInfo);
+            } catch (Exception ex) {
+                throw new BusinessException("Can't delete member from workspace: " + ex.getMessage());
+            }
+
+            try {
+                memberInfoRepository.deleteById(memberInfo.getAccountId());
+                log.info("Delete member in database success: {}", memberInfo);
+            } catch (Exception ex) {
+                throw new BusinessException("Can't delete member in database: " + ex.getMessage());
+            }
+        }
     }
 }
